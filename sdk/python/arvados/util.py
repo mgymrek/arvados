@@ -87,7 +87,7 @@ def tarball_extract(tarball, path):
             if os.path.exists(os.path.join(path, '.locator')):
                 os.unlink(os.path.join(path, '.locator'))
 
-        for f in CollectionReader(tarball).all_files():
+        for f in arvados.CollectionReader(tarball).all_files():
             if re.search('\.(tbz|tar.bz2)$', f.name()):
                 p = arvados.util.tar_extractor(path, 'j')
             elif re.search('\.(tgz|tar.gz)$', f.name()):
@@ -148,7 +148,7 @@ def zipball_extract(zipball, path):
             if os.path.exists(os.path.join(path, '.locator')):
                 os.unlink(os.path.join(path, '.locator'))
 
-        for f in CollectionReader(zipball).all_files():
+        for f in arvados.CollectionReader(zipball).all_files():
             if not re.search('\.zip$', f.name()):
                 raise arvados.errors.NotImplementedError(
                     "zipball_extract cannot handle filename %s" % f.name())
@@ -217,7 +217,7 @@ def collection_extract(collection, path, files=[], decompress=True):
             os.unlink(os.path.join(path, '.locator'))
 
     files_got = []
-    for s in CollectionReader(collection).all_streams():
+    for s in arvados.CollectionReader(collection).all_streams():
         stream_name = s.name()
         for f in s.all_files():
             if (files == [] or
@@ -238,7 +238,7 @@ def collection_extract(collection, path, files=[], decompress=True):
         raise arvados.errors.AssertionError(
             "Wanted files %s but only got %s from %s" %
             (files, files_got,
-             [z.name() for z in CollectionReader(collection).all_files()]))
+             [z.name() for z in arvados.CollectionReader(collection).all_files()]))
     os.symlink(collection_hash, os.path.join(path, '.locator'))
 
     lockfile.close()
