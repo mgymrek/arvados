@@ -1,9 +1,11 @@
+import arvados
 import fcntl
 import hashlib
 import os
 import re
 import subprocess
 import errno
+import sys
 
 def clear_tmpdir(path=None):
     """
@@ -11,7 +13,7 @@ def clear_tmpdir(path=None):
     exists and is empty.
     """
     if path == None:
-        path = current_task().tmpdir
+        path = arvados.current_task().tmpdir
     if os.path.exists(path):
         p = subprocess.Popen(['rm', '-rf', path])
         stdout, stderr = p.communicate(None)
@@ -28,18 +30,18 @@ def run_command(execargs, **kwargs):
     p = subprocess.Popen(execargs, **kwargs)
     stdoutdata, stderrdata = p.communicate(None)
     if p.returncode != 0:
-        raise errors.CommandFailedError(
+        raise arvados.errors.CommandFailedError(
             "run_command %s exit %d:\n%s" %
             (execargs, p.returncode, stderrdata))
     return stdoutdata, stderrdata
 
 def git_checkout(url, version, path):
     if not re.search('^/', path):
-        path = os.path.join(current_job().tmpdir, path)
+        path = os.path.join(arvados.current_job().tmpdir, path)
     if not os.path.exists(path):
-        util.run_command(["git", "clone", url, path],
+        arvados.util.run_command(["git", "clone", url, path],
                          cwd=os.path.dirname(path))
-    util.run_command(["git", "checkout", version],
+    arvados.util.run_command(["git", "checkout", version],
                      cwd=path)
     return path
 
@@ -63,7 +65,7 @@ def tarball_extract(tarball, path):
     path -- where to extract the tarball: absolute, or relative to job tmp
     """
     if not re.search('^/', path):
-        path = os.path.join(current_job().tmpdir, path)
+        path = os.path.join(arvados.current_job().tmpdir, path)
     lockfile = open(path + '.lock', 'w')
     fcntl.flock(lockfile, fcntl.LOCK_EX)
     try:
@@ -87,13 +89,13 @@ def tarball_extract(tarball, path):
 
         for f in CollectionReader(tarball).all_files():
             if re.search('\.(tbz|tar.bz2)$', f.name()):
-                p = util.tar_extractor(path, 'j')
+                p = arvados.util.tar_extractor(path, 'j')
             elif re.search('\.(tgz|tar.gz)$', f.name()):
-                p = util.tar_extractor(path, 'z')
+                p = arvados.util.tar_extractor(path, 'z')
             elif re.search('\.tar$', f.name()):
-                p = util.tar_extractor(path, '')
+                p = arvados.util.tar_extractor(path, '')
             else:
-                raise errors.AssertionError(
+                raise arvados.errors.AssertionError(
                     "tarball_extract cannot handle filename %s" % f.name())
             while True:
                 buf = f.read(2**20)
@@ -104,7 +106,7 @@ def tarball_extract(tarball, path):
             p.wait()
             if p.returncode != 0:
                 lockfile.close()
-                raise errors.CommandFailedError(
+                raise arvados.errors.CommandFailedError(
                     "tar exited %d" % p.returncode)
         os.symlink(tarball, os.path.join(path, '.locator'))
     tld_extracts = filter(lambda f: f != '.locator', os.listdir(path))
@@ -124,7 +126,7 @@ def zipball_extract(zipball, path):
     path -- where to extract the archive: absolute, or relative to job tmp
     """
     if not re.search('^/', path):
-        path = os.path.join(current_job().tmpdir, path)
+        path = os.path.join(arvados.current_job().tmpdir, path)
     lockfile = open(path + '.lock', 'w')
     fcntl.flock(lockfile, fcntl.LOCK_EX)
     try:
@@ -148,7 +150,7 @@ def zipball_extract(zipball, path):
 
         for f in CollectionReader(zipball).all_files():
             if not re.search('\.zip$', f.name()):
-                raise errors.NotImplementedError(
+                raise arvados.errors.NotImplementedError(
                     "zipball_extract cannot handle filename %s" % f.name())
             zip_filename = os.path.join(path, os.path.basename(f.name()))
             zip_file = open(zip_filename, 'wb')
@@ -169,7 +171,7 @@ def zipball_extract(zipball, path):
             p.wait()
             if p.returncode != 0:
                 lockfile.close()
-                raise errors.CommandFailedError(
+                raise arvados.errors.CommandFailedError(
                     "unzip exited %d" % p.returncode)
             os.unlink(zip_filename)
         os.symlink(zipball, os.path.join(path, '.locator'))
@@ -193,7 +195,7 @@ def collection_extract(collection, path, files=[], decompress=True):
     else:
         collection_hash = hashlib.md5(collection).hexdigest()
     if not re.search('^/', path):
-        path = os.path.join(current_job().tmpdir, path)
+        path = os.path.join(arvados.current_job().tmpdir, path)
     lockfile = open(path + '.lock', 'w')
     fcntl.flock(lockfile, fcntl.LOCK_EX)
     try:
@@ -233,7 +235,7 @@ def collection_extract(collection, path, files=[], decompress=True):
                     outfile.write(buf)
                 outfile.close()
     if len(files_got) < len(files):
-        raise errors.AssertionError(
+        raise arvados.errors.AssertionError(
             "Wanted files %s but only got %s from %s" %
             (files, files_got,
              [z.name() for z in CollectionReader(collection).all_files()]))
@@ -263,7 +265,7 @@ def stream_extract(stream, path, files=[], decompress=True):
     path -- where to extract: absolute, or relative to job tmp
     """
     if not re.search('^/', path):
-        path = os.path.join(current_job().tmpdir, path)
+        path = os.path.join(arvados.current_job().tmpdir, path)
     lockfile = open(path + '.lock', 'w')
     fcntl.flock(lockfile, fcntl.LOCK_EX)
     try:
@@ -281,14 +283,14 @@ def stream_extract(stream, path, files=[], decompress=True):
             files_got += [outname]
             if os.path.exists(os.path.join(path, outname)):
                 os.unlink(os.path.join(path, outname))
-            util.mkdir_dash_p(os.path.dirname(os.path.join(path, outname)))
+            arvados.util.mkdir_dash_p(os.path.dirname(os.path.join(path, outname)))
             outfile = open(os.path.join(path, outname), 'wb')
             for buf in (f.readall_decompressed() if decompress
                         else f.readall()):
                 outfile.write(buf)
             outfile.close()
     if len(files_got) < len(files):
-        raise errors.AssertionError(
+        raise arvados.errors.AssertionError(
             "Wanted files %s but only got %s from %s" %
             (files, files_got, [z.name() for z in stream.all_files()]))
     lockfile.close()
@@ -300,7 +302,7 @@ def listdir_recursive(dirname, base=None):
         ent_path = os.path.join(dirname, ent)
         ent_base = os.path.join(base, ent) if base else ent
         if os.path.isdir(ent_path):
-            allfiles += util.listdir_recursive(ent_path, ent_base)
+            allfiles += arvados.util.listdir_recursive(ent_path, ent_base)
         else:
             allfiles += [ent_base]
     return allfiles
