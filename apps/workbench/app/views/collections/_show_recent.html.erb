@@ -15,14 +15,14 @@
 
 <div style="padding-right: 1em">
 
-<table id="collections-index" class="topalign table table-condensed table-fixedlayout">
+<table id="collections-index" class="topalign table table-condensed table-fixedlayout table-fixed-header-row">
   <colgroup>
     <col width="10%" />
     <col width="36%" />
-    <col width="22%" />
+    <col width="15%" />
     <col width="8%" />
-    <col width="16%" />
     <col width="8%" />
+    <col width="23%" />
   </colgroup>
   <thead>
     <tr class="contain-align-left">
@@ -30,8 +30,8 @@
       <th>contents</th>
       <th>owner</th>
       <th>age</th>
-      <th>tags</th>
       <th>storage</th>
+      <th>tags</th>
     </tr>
   </thead>
   <tbody>
@@ -40,7 +40,7 @@
 </table>
 </div>
 
-<% content_for :js do %>
+<% content_for :footer_js do %>
 $(document).on('click', 'form[data-remote] input[type=submit]', function() {
   $('table#collections-index tbody').fadeTo(200, 0.3);
   return true;

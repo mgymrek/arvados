@@ -19,7 +19,7 @@ class CollectionsController < ApplicationController
     @collection_info = {}
     @collections.each do |c|
       @collection_info[c.uuid] = {
-        tags: [],
+        tag_links: [],
         wanted: false,
         wanted_by_me: false,
         provenance: [],
@@ -31,7 +31,7 @@ class CollectionsController < ApplicationController
       info = @collection_info[link.head_uuid]
       case link.link_class
       when 'tag'
-        info[:tags] << link.name
+        info[:tag_links] << link
       when 'resources'
         info[:wanted] = true
         info[:wanted_by_me] ||= link.tail_uuid == current_user.uuid
@@ -102,7 +102,7 @@ class CollectionsController < ApplicationController
     end
     
     Collection.where(uuid: @object.uuid).each do |u|
-      @prov_svg = ProvenanceHelper::create_provenance_graph u.provenance, "provenance_svg", {:direction => :bottom_up, :combine_jobs => :script_only} rescue nil
+      @prov_svg = ProvenanceHelper::create_provenance_graph u.provenance, "provenance_svg", {:direction => :top_down, :combine_jobs => :script_only} rescue nil
       @used_by_svg = ProvenanceHelper::create_provenance_graph u.used_by, "used_by_svg", {:direction => :top_down, :combine_jobs => :script_only, :pdata_only => true} rescue nil
     end
   end

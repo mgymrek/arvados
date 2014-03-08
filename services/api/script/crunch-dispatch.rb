@@ -40,14 +40,36 @@ class Dispatcher
     @todo = Job.queue
   end
 
+  def sinfo
+    @@slurm_version ||= Gem::Version.new(`sinfo --version`.match(/\b[\d\.]+\b/)[0])
+    if Gem::Version.new('2.3') <= @@slurm_version
+      `sinfo --noheader -o '%n:%t'`.strip
+    else
+      # Expand rows with hostname ranges (like "foo[1-3,5,9-12]:idle")
+      # into multiple rows with one hostname each.
+      `sinfo --noheader -o '%N:%t'`.split("\n").collect do |line|
+        tokens = line.split ":"
+        if (re = tokens[0].match /^(.*?)\[([-,\d]+)\]$/)
+          re[2].split(",").collect do |range|
+            range = range.split("-").collect(&:to_i)
+            (range[0]..range[-1]).collect do |n|
+              [re[1] + n.to_s, tokens[1..-1]].join ":"
+            end
+          end
+        else
+          tokens.join ":"
+        end
+      end.flatten.join "\n"
+    end
+  end
+
   def update_node_status
     if Server::Application.config.crunch_job_wrapper.to_s.match /^slurm/
       @nodes_in_state = {idle: 0, alloc: 0, down: 0}
       @node_state ||= {}
       node_seen = {}
       begin
-        `sinfo --noheader -o '%n:%t'`.
-          split("\n").
+        sinfo.split("\n").
           each do |line|
           re = line.match /(\S+?):+(idle|alloc|down)/
           next if !re
@@ -122,15 +144,16 @@ class Dispatcher
             api_client_id: 0)
       job_auth.save
 
-      cmd_args << (ENV['CRUNCH_JOB_BIN'] || `which crunch-job`.strip)
+      crunch_job_bin = (ENV['CRUNCH_JOB_BIN'] || `which arv-crunch-job`.strip)
+      if crunch_job_bin == ''
+        raise "No CRUNCH_JOB_BIN env var, and crunch-job not in path."
+      end
+
+      cmd_args << crunch_job_bin
       cmd_args << '--job-api-token'
       cmd_args << job_auth.api_token
       cmd_args << '--job'
       cmd_args << job.uuid
-
-      if cmd_args[0] == ''
-        raise "No CRUNCH_JOB_BIN env var, and crunch-job not in path."
-      end
 
       commit = Commit.where(sha1: job.script_version).first
       if commit

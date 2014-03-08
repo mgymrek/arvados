@@ -8,9 +8,9 @@ title: "Using GATK with Arvados"
 
 h1. Using GATK with Arvados
 
-This tutorials demonstrates how to use the Genome Analysis Toolkit (GATK) with Arvados. In this example we will install GATK and then create a VariantFiltration job to assign pass/fail scores to variants in a VCF file.
+This tutorial demonstrates how to use the Genome Analysis Toolkit (GATK) with Arvados. In this example we will install GATK and then create a VariantFiltration job to assign pass/fail scores to variants in a VCF file.
 
-*This tutorial assumes that you are "logged into an Arvados VM instance":{{site.basedoc}}/user/getting_started/ssh-access.html#login, and have a "working environment.":{{site.basedoc}}/user/getting_started/check-environment.html*
+*This tutorial assumes that you are "logged into an Arvados VM instance":{{site.baseurl}}/user/getting_started/ssh-access.html#login, and have a "working environment.":{{site.baseurl}}/user/getting_started/check-environment.html*
 
 h2. Installing GATK
 
@@ -120,7 +120,7 @@ EOF</span>
 Now start a job:
 
 <notextile>
-<pre><code>~$ <span class="userinput">arv -h job create --job "$(cat the_job)"</span>
+<pre><code>~$ <span class="userinput">arv job create --job "$(cat the_job)"</span>
 {
  "href":"https://qr1hi.arvadosapi.com/arvados/v1/jobs/qr1hi-8i9sb-n9k7qyp7bs5b9d4",
  "kind":"arvados#job",
